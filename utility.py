@@ -2,13 +2,10 @@ from collections import defaultdict
 import networkx as nx
 
 
-
+# Returns dictionary from combination ID to pair of stitch IDs,
+# dictionary from combination ID to list of polypharmacy side effects, 
+# and dictionary from side effects to their names.
 def load_combo_se(fname='bio-decagon-combo.csv'):
-    """
-    Returns dictionary from combination ID to pair of stitch IDs,
-    dictionary from combination ID to list of polypharmacy side effects,
-    and dictionary from side effects to their names.
-    """
     combo2stitch = {}
     combo2se = defaultdict(set)
     se2name = {}

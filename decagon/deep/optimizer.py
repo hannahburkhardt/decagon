@@ -105,8 +105,8 @@ class DecagonOptimizer(object):
         self.predictions = tf.matmul(product3, tf.transpose(col_embeds))
 
     def _build(self):
-        self.cost = self._hinge_loss(self.outputs, self.neg_outputs)
-        # self.cost = self._xent_loss(self.outputs, self.neg_outputs)
+        #self.cost = self._hinge_loss(self.outputs, self.neg_outputs)
+        self.cost = self._xent_loss(self.outputs, self.neg_outputs) # from the paper, decagon appears to use cross entropy
         self.optimizer = tf.train.AdamOptimizer(learning_rate=FLAGS.learning_rate)
 
         self.opt_op = self.optimizer.minimize(self.cost)

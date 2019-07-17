@@ -83,10 +83,10 @@ class EdgeMinibatchIterator(object):
         all_edge_idx = list(range(edges_all.shape[0]))
         np.random.shuffle(all_edge_idx)
 
-        val_edge_idx = all_edge_idx[:num_val]
+        val_edge_idx = all_edge_idx[:num_val] # shuffle and take the first 5% for validation
         val_edges = edges_all[val_edge_idx]
 
-        test_edge_idx = all_edge_idx[num_val:(num_val + num_test)]
+        test_edge_idx = all_edge_idx[num_val:(num_val + num_test)] # second 5% for testing
         test_edges = edges_all[test_edge_idx]
 
         train_edges = np.delete(edges_all, np.hstack([test_edge_idx, val_edge_idx]), axis=0)
@@ -124,11 +124,34 @@ class EdgeMinibatchIterator(object):
             shape=self.adj_mats[edge_type][type_idx].shape)
         self.adj_train[edge_type][type_idx] = self.preprocess_graph(adj_train)
 
+        self.save_edges_to_disk(edge_type, test_edges, test_edges_false, train_edges, type_idx, val_edges,
+                                val_edges_false)
+
+    def save_edges_to_disk(self, edge_type, test_edges, test_edges_false, train_edges, type_idx, val_edges,
+                           val_edges_false):
+        if edge_type == (0, 0):
+            name = "ppi"
+        elif edge_type == (0, 1):
+            name = "protein_drug"
+        elif edge_type == (1, 0):
+            name = 'drug_protein'
+        else:
+            name = "ddi"
         self.train_edges[edge_type][type_idx] = train_edges
+        np.savetxt("train_edges_{}_{}.csv".format(name, type_idx), train_edges, delimiter=",",
+                   fmt="%d")
         self.val_edges[edge_type][type_idx] = val_edges
+        np.savetxt("validation_edges_{}_{}.csv".format(name, type_idx), val_edges, delimiter=",",
+                   fmt="%d")
         self.val_edges_false[edge_type][type_idx] = np.array(val_edges_false)
+        np.savetxt("validation_edges_false_{}_{}.csv".format(name, type_idx), np.array(val_edges_false), delimiter=",",
+                   fmt="%d")
         self.test_edges[edge_type][type_idx] = test_edges
+        np.savetxt("test_edges_{}_{}.csv".format(name, type_idx), test_edges, delimiter=",",
+                   fmt="%d")
         self.test_edges_false[edge_type][type_idx] = np.array(test_edges_false)
+        np.savetxt("test_edges_false_{}_{}.csv".format(name, type_idx), np.array(test_edges_false), delimiter=",",
+                   fmt="%d")
 
     def end(self):
         finished = len(self.freebatch_edge_types) == 0
@@ -200,6 +223,12 @@ class EdgeMinibatchIterator(object):
             ind = np.random.permutation(len(edge_list))
             val_edges = [edge_list[i] for i in ind[:min(size, len(ind))]]
             return self.batch_feed_dict(val_edges, edge_type, placeholders)
+
+    def test_feed_dict(self, edge_type, placeholders):
+        edge_type_ = self.idx2edge_type[edge_type]
+        edge_list = self.test_edges[edge_type_[0],edge_type_[1]][edge_type_[2]]
+        return self.batch_feed_dict(edge_list, edge_type, placeholders)
+
 
     def shuffle(self):
         """ Re-shuffle the training set.
