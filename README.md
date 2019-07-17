@@ -1,8 +1,10 @@
 # Decagon implementation used in "Predicting Adverse Drug-Drug Interactions with Neural Embedding of Semantic Predications"
 
-#### Author: Hannah Burkhardt (haalbu@uw.edu)
+#### Repository author: Hannah Burkhardt (haalbu@uw.edu)
 
-This repository contains the implementation of the [Decagon algorithm](https://doi.org/10.1093/bioinformatics/bty294) used in our paper "Predicting Adverse Drug-Drug Interactions with Neural Embedding of Semantic Predications".
+This repository contains the implementation of the [Decagon algorithm](https://doi.org/10.1093/bioinformatics/bty294) used in our paper:
+
+Burkhardt, Hannah A, Devika Subramanian, Justin Mower, and Trevor Cohen. 2019. “Predicting Adverse Drug-Drug Interactions with Neural Embedding of Semantic Predications.” To Appear in Proc AMIA Annu Symp 2019.
 
 The required Decagon data files are available at [http://snap.stanford.edu/decagon](http://snap.stanford.edu/decagon).
 
