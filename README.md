@@ -38,3 +38,4 @@ conda activate decagon_ddi
 cd decagon
 python main.py --decagon_data_file_directory ../bio-decagon/ --epochs=4
 ```
+Depending on hardware, rhe running time will be approximately 7 hours + epochs*36 hours, that is about 6 days for 4 epochs.
