@@ -2,6 +2,9 @@
 # $ conda create --name <env> --file <this file>
 # platform: linux-64
 @EXPLICIT
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
 https://repo.continuum.io/pkgs/main/linux-64/_libgcc_mutex-0.1-main.tar.bz2
 https://repo.continuum.io/pkgs/main/linux-64/_tflow_select-2.1.0-gpu.tar.bz2
 https://repo.continuum.io/pkgs/main/linux-64/blas-1.0-mkl.tar.bz2
@@ -19,6 +22,33 @@ https://repo.continuum.io/pkgs/main/linux-64/cupti-9.2.148-0.tar.bz2
 https://repo.anaconda.com/pkgs/main/linux-64/mkl-2018.0.3-1.tar.bz2
 https://repo.continuum.io/pkgs/main/linux-64/ncurses-6.1-he6710b0_1.tar.bz2
 https://repo.anaconda.com/pkgs/main/linux-64/openssl-1.1.1c-h7b6447c_1.tar.bz2
+=======
+=======
+>>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
+https://repo.continuum.io/pkgs/main/linux-64/_tflow_select-2.1.0-gpu.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/blas-1.0-mkl.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/ca-certificates-2019.1.23-0.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/cudatoolkit-9.2-0.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/intel-openmp-2019.1-144.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/libgcc-ng-8.2.0-hdf63c60_1.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/libgfortran-ng-7.3.0-hdf63c60_0.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/libstdcxx-ng-8.2.0-hdf63c60_1.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/c-ares-1.15.0-h7b6447c_1.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/cudnn-7.3.1-cuda9.2_0.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/cupti-9.2.148-0.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/libffi-3.2.1-hd88cf55_4.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/mkl-2019.1-144.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/ncurses-6.1-he6710b0_1.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/openssl-1.1.1a-h7b6447c_0.tar.bz2
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
 https://repo.continuum.io/pkgs/main/linux-64/xz-5.2.4-h14c3975_4.tar.bz2
 https://repo.continuum.io/pkgs/main/linux-64/zlib-1.2.11-h7b6447c_3.tar.bz2
 https://repo.continuum.io/pkgs/main/linux-64/hdf5-1.10.4-hb1b8bf9_0.tar.bz2
@@ -27,6 +57,9 @@ https://repo.continuum.io/pkgs/main/linux-64/libprotobuf-3.6.1-hd408876_0.tar.bz
 https://repo.continuum.io/pkgs/main/linux-64/readline-7.0-h7b6447c_5.tar.bz2
 https://repo.continuum.io/pkgs/main/linux-64/tk-8.6.8-hbc83047_0.tar.bz2
 https://repo.continuum.io/pkgs/main/linux-64/sqlite-3.26.0-h7b6447c_0.tar.bz2
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
 https://repo.anaconda.com/pkgs/main/linux-64/python-2.7.15-h9bab390_6.tar.bz2
 https://repo.anaconda.com/pkgs/main/linux-64/astor-0.7.1-py27_0.tar.bz2
 https://repo.anaconda.com/pkgs/main/noarch/backports-1.0-py_2.tar.bz2
@@ -64,4 +97,44 @@ https://repo.anaconda.com/pkgs/main/linux-64/tensorboard-1.12.2-py27he6710b0_0.t
 https://repo.anaconda.com/pkgs/main/noarch/keras-applications-1.0.8-py_0.tar.bz2
 https://repo.anaconda.com/pkgs/main/linux-64/tensorflow-base-1.12.0-gpu_py27had579c0_0.tar.bz2
 https://repo.anaconda.com/pkgs/main/linux-64/tensorflow-1.12.0-gpu_py27h2a0f108_0.tar.bz2
+=======
+=======
+>>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
+https://repo.continuum.io/pkgs/main/linux-64/python-3.6.8-h0371630_0.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/astor-0.7.1-py36_0.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/certifi-2018.11.29-py36_0.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/decorator-4.3.2-py36_0.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/gast-0.2.2-py36_0.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/numpy-base-1.15.4-py36hde5b4d6_0.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/six-1.12.0-py36_0.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/termcolor-1.1.0-py36_1.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/werkzeug-0.14.1-py36_0.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/absl-py-0.7.0-py36_0.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/mkl_random-1.0.2-py36hd81dba3_0.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/protobuf-3.6.1-py36he6710b0_0.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/setuptools-40.7.3-py36_0.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/grpcio-1.16.1-py36hf8bcb03_1.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/markdown-3.0.1-py36_0.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/networkx-2.2-py36_1.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/wheel-0.32.3-py36_0.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/pip-19.0.1-py36_0.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/h5py-2.9.0-py36h7918eee_0.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/keras-applications-1.0.6-py36_0.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/mkl_fft-1.0.10-py36ha843d7b_0.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/numpy-1.15.4-py36h7e9f1db_0.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/scipy-1.2.0-py36h7c811a0_0.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/tensorboard-1.12.2-py36he6710b0_0.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/keras-preprocessing-1.0.5-py36_0.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/scikit-learn-0.20.2-py36hd81dba3_0.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/tensorflow-base-1.12.0-gpu_py36had579c0_0.tar.bz2
+https://repo.continuum.io/pkgs/main/linux-64/tensorflow-1.12.0-gpu_py36he74679b_0.tar.bz2
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
 https://repo.continuum.io/pkgs/main/linux-64/tensorflow-gpu-1.12.0-h0d30ee6_0.tar.bz2
