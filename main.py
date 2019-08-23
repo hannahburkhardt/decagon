@@ -4,8 +4,8 @@ from __future__ import print_function
 import argparse
 import os
 import pickle
-import time
 import sys
+import time
 from datetime import datetime
 from operator import itemgetter
 
@@ -14,14 +14,10 @@ import scipy.sparse as sp
 import tensorflow as tf
 from sklearn import metrics
 
-import pandas as pd
-
 from decagon.deep.minibatch import EdgeMinibatchIterator
 from decagon.deep.model import DecagonModel
 from decagon.deep.optimizer import DecagonOptimizer
 from decagon.utility import rank_metrics, preprocessing
-
-
 # NOTE utility.py needs to be copied up from polypharmacy to current directory
 from utility import *
 
@@ -192,8 +188,9 @@ def get_validation_loss(edges_pos, edges_neg, feed_dict):
 
 
 def get_predicted_labels(edges_pos, edges_neg, edge_type, feed_dict):
-    actual, predicted, all_scores, all_labels, _, _, _ = get_predictions(edge_type, edges_neg=edges_neg, edges_pos=edges_pos,
-                                                            feed_dict=feed_dict)
+    actual, predicted, all_scores, all_labels, _, _, _ = get_predictions(edge_type, edges_neg=edges_neg,
+                                                                         edges_pos=edges_pos,
+                                                                         feed_dict=feed_dict)
     return all_scores, all_labels
 
 
@@ -237,29 +234,23 @@ def construct_placeholders(edge_types):
 
 
 def main(args):
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--decagon_data_file_directory", type=str,
-                        help="path to directory where bio-decagon-*.csv files are located, with trailing slash. "
-                             "Default is current directory",
-                        default='./')
-    parser.add_argument("--saved_files_directory", type=str,
-                        help="path to directory where saved files files are located, with trailing slash. "
-                             "Default is current directory. If a decagon_model.ckpt* exists in this directory, it will "
-                             "be loaded and evaluated, and no training will be done.",
-                        default='./')
-    parser.add_argument("--verbose", help="increase output verbosity", action="store_true", default=False)
-    args = parser.parse_args(args)
-
     decagon_data_file_directory = args.decagon_data_file_directory
     verbose = args.verbose
     script_start_time = datetime.now()
 
     # create pre-processed file that only has side effect with >=500 occurrences
-    all_combos_df = pd.read_csv('%sbio-decagon-combo.csv'% decagon_data_file_directory)
-    side_effects_500 = all_combos_df["Polypharmacy Side Effect"].value_counts()
-    side_effects_500 = side_effects_500[side_effects_500>=500].index.tolist()
-    all_combos_df = all_combos_df[all_combos_df["Polypharmacy Side Effect"].isin(side_effects_500)]
-    all_combos_df.to_csv('%sbio-decagon-combo-over500only.csv' % decagon_data_file_directory, index=False)
+    if not os.path.isfile('%sbio-decagon-combo-over500only.csv' % decagon_data_file_directory):
+        all_combos_arr = np.genfromtxt('%sbio-decagon-combo.csv' % decagon_data_file_directory, delimiter=',',
+                                       encoding="utf8", dtype='str', skip_header=1)
+        unique, counts = np.unique(all_combos_arr[:, 2], return_counts=True)
+        counts_dict = dict(zip(unique, counts))
+        has_500_or_more = []
+        for i in all_combos_arr:
+            has_500_or_more.append(counts_dict[i[2]] >= 500)
+        over500 = all_combos_arr[np.where(has_500_or_more)]
+        np.savetxt('%sbio-decagon-combo-over500only.csv' % decagon_data_file_directory, over500, delimiter=',',
+                   fmt='%s',
+                   encoding='utf8', header='STITCH 1,STITCH 2,Polypharmacy Side Effect,Side Effect Name', comments='')
 
     # use pre=processed file that only contains the most common side effects (those with >= 500 drug pairs)
     drug_drug_net, combo2stitch, combo2se, se2name = load_combo_se(
@@ -455,7 +446,8 @@ def main(args):
             feat=feat,
             edge_types=edge_types,
             batch_size=FLAGS.batch_size,
-            val_test_size=val_test_size)
+            val_test_size=val_test_size,
+            negatives_sampling_strategy=args.negatives_sampling_strategy)
         print("Pickling minibatch iterator")
         with open(iterator_pickle_file_name, 'wb') as pickle_file:
             pickle.dump(minibatch_iterator, pickle_file)
@@ -546,7 +538,8 @@ def main(args):
                           "val_apk=", "{:.5f}".format(val_apk), "time=", "{:.5f}".format(time.time() - t))
 
                 itr += 1
-            validation_loss = get_validation_loss(edges_pos=minibatch_iterator.val_edges, edges_neg=minibatch_iterator.val_edges_false, feed_dict=feed_dict)
+            validation_loss = get_validation_loss(edges_pos=minibatch_iterator.val_edges,
+                                                  edges_neg=minibatch_iterator.val_edges_false, feed_dict=feed_dict)
             print("Epoch:", "%04d" % (epoch + 1), "Validation loss (average cross entropy): {}".format(validation_loss))
 
             epoch_losses.append(validation_loss)
@@ -554,8 +547,8 @@ def main(args):
                 if round(epoch_losses[-1], 3) >= round(epoch_losses[-2], 3) >= round(epoch_losses[-3], 3):
                     break
 
-            print("Saving model after epoch:",epoch)
-            save_path = saver.save(sess, args.saved_files_directory + "decagon_model"+str(epoch)+".ckpt")
+            print("Saving model after epoch:", epoch)
+            save_path = saver.save(sess, args.saved_files_directory + "decagon_model" + str(epoch) + ".ckpt")
             print("Model saved in path: %s" % save_path)
 
         print("Optimization finished!")
@@ -573,16 +566,24 @@ def main(args):
     print("Evaluating model")
     print("Starting at %s" % str(start_time))
 
+    side_effect_result_lines = []
+    header = "subject\tpredicate\tobject\tpredicted\tactual"
+    side_effect_result_lines.append(header)
+    print(header)
+
     for edge_type in range(num_edge_types):
         # get all edges in test set with this type
         feed_dict = minibatch_iterator.test_feed_dict(edge_type, placeholders=placeholders)
         feed_dict = minibatch_iterator.update_feed_dict(feed_dict, FLAGS.dropout, placeholders)
         edge_tuple = minibatch_iterator.idx2edge_type[edge_type]
 
-        _, _, all_scores, all_labels, subjects, predicates, objects = get_predictions(
-            edges_pos=minibatch_iterator.test_edges, edges_neg=minibatch_iterator.test_edges_false, edge_type=edge_tuple, feed_dict=feed_dict)
+        if args.predict_side_effects_only and edge_tuple[:2] != (1, 1):
+            continue
 
-        print("subject\tpredicate\tobject\tpredicted\tactual")
+        _, _, all_scores, all_labels, subjects, predicates, objects = get_predictions(
+            edges_pos=minibatch_iterator.test_edges, edges_neg=minibatch_iterator.test_edges_false,
+            edge_type=edge_tuple, feed_dict=feed_dict)
+
         for i in range(len(all_scores)):
             subject = subjects[i]
             if edge_tuple[0] == 1:
@@ -607,7 +608,13 @@ def main(args):
                 if is_inverse:
                     predicate = predicate + "_2"
 
-            print("{}\t{}\t{}\t{}\t{}".format(subject, predicate, object, all_scores[i], all_labels[i]))
+            line = "{}\t{}\t{}\t{}\t{}".format(subject, predicate, object, all_scores[i], all_labels[i])
+            if edge_tuple[:2] == (1, 1):
+                side_effect_result_lines.append(line)
+            print(line)
+
+    with open(args.score_output_file, "w") as outfile:
+        outfile.write("\n".join(side_effect_result_lines))
 
     print()
 
@@ -618,17 +625,18 @@ def main(args):
 
 if __name__ == '__main__':
     # allow specification of command line flags
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--neg_sample_size', type=int, default=1, help='Negative sample size.')
-    parser.add_argument('--learning_rate', type=float, default=0.001, help='Initial learning rate.')
-    parser.add_argument('--epochs', type=int, default=50, help='Number of epochs to train.')
-    parser.add_argument('--hidden1', type=int, default=64, help='Number of units in hidden layer 1.')
-    parser.add_argument('--hidden2', type=int, default=32, help='Number of units in hidden layer 2.')
-    parser.add_argument('--weight_decay', type=float, default=0, help='Weight for L2 loss on embedding matrix.')
-    parser.add_argument('--dropout', type=float, default=0.1, help='Dropout rate (1 - keep probability).')
-    parser.add_argument('--max_margin', type=float, default=0.1, help='Max margin parameter in hinge loss')
-    parser.add_argument('--batch_size', type=int, default=512, help='minibatch size.')
-    parser.add_argument('--bias', type=bool, default=True, help='Bias term.')
+    parser = argparse.ArgumentParser(add_help=False)
+    group = parser.add_argument_group("Tensorflow arguments")
+    group.add_argument('--neg_sample_size', type=int, default=1, help='Negative sample size.')
+    group.add_argument('--learning_rate', type=float, default=0.001, help='Initial learning rate.')
+    group.add_argument('--epochs', type=int, default=50, help='Number of epochs to train.')
+    group.add_argument('--hidden1', type=int, default=64, help='Number of units in hidden layer 1.')
+    group.add_argument('--hidden2', type=int, default=32, help='Number of units in hidden layer 2.')
+    group.add_argument('--weight_decay', type=float, default=0, help='Weight for L2 loss on embedding matrix.')
+    group.add_argument('--dropout', type=float, default=0.1, help='Dropout rate (1 - keep probability).')
+    group.add_argument('--max_margin', type=float, default=0.1, help='Max margin parameter in hinge loss')
+    group.add_argument('--batch_size', type=int, default=512, help='minibatch size.')
+    group.add_argument('--bias', type=bool, default=True, help='Bias term.')
 
     tf_flags, unparsed = parser.parse_known_args()
 
@@ -649,4 +657,34 @@ if __name__ == '__main__':
     # Remove flags to keep from confusing tensorflow. This prevents an UnrecognizedFlagError later on.
     sys.argv = sys.argv[:1]
 
-    main(unparsed)
+    parser = argparse.ArgumentParser(parents=[parser])
+    group = parser.add_argument_group("More arguments")
+    group.add_argument("--decagon_data_file_directory", type=str,
+                       help="path to directory where bio-decagon-*.csv files are located, with trailing slash. "
+                            "Default is current directory",
+                       default='./')
+    group.add_argument("--saved_files_directory", type=str,
+                       help="path to directory where saved files files are located, with trailing slash. "
+                            "Default is current directory. If a decagon_model.ckpt* exists in this directory, it will "
+                            "be loaded and evaluated, and no training will be done.",
+                       default='./')
+    group.add_argument("--verbose", help="increase output verbosity", action="store_true", default=False)
+    group.add_argument("--predict_side_effects_only",
+                       help="output predictions for side effect triples only (not for PPI or drug target triples)",
+                       action="store_true", default=False)
+    group.add_argument("--negatives_sampling_strategy",
+                       help="'naive' or 'known_pairs' (default naive). False edges for drug pairs will be "
+                            "sampled as follows: "
+                            "- naive: for each side effect in the positive testing examples, make a negative triple with that side "
+                            "effect and 2 random drugs (independently sampled), confirming that the resulting triple is not "
+                            "a positive triple. This strategy has a high chance of resulting in never-seen-before drug "
+                            "pairings. "
+                            "- known_pairs: for each side effect in the positive testing examples, make a negative triple with that "
+                            "side effect and a randomly selected pair taken from the list of pairs that are present in the "
+                            "positive examples. This way, only known drug pairings will be represented in the negative set.",
+                       default="naive", type=str, choices=['naive', 'known_pairs'])
+    group.add_argument("--score_output_file",
+                       help="name of file to write test set predictions to", default="scores.tsv", type=str)
+    args = parser.parse_args(unparsed)
+
+    main(args)

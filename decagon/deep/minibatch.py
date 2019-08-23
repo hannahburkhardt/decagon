@@ -1,6 +1,8 @@
 from __future__ import division
 from __future__ import print_function
 
+import os
+
 import numpy as np
 import scipy.sparse as sp
 
@@ -16,7 +18,19 @@ class EdgeMinibatchIterator(object):
     placeholders -- tensorflow placeholders object
     batch_size -- size of the minibatches
     """
-    def __init__(self, adj_mats, feat, edge_types, batch_size=100, val_test_size=0.01):
+    def __init__(self, adj_mats, feat, edge_types, batch_size=100, val_test_size=0.01,
+                 negatives_sampling_strategy='naive'):
+        """
+        :param negatives_sampling_strategy: 'naive' or 'known_pairs'. False edges for drug pairs will be
+            sampled as follows:
+            - naive: for each side effect in the positive testing examples, make a negative triple with that side
+                    effect and 2 random drugs (independently sampled), confirming that the resulting triple is not
+                    a positive triple. This strategy has a high chance of resulting in never-seen-before drug
+                    pairings.
+            - known_pairs: for each side effect in the positive testing examples, make a negative triple with that
+                    side effect and a randomly selected pair taken from the list of pairs that are present in the
+                    positive examples. This way, only known drug pairings will be represented in the negative set.
+        """
         self.adj_mats = adj_mats
         self.feat = feat
         self.edge_types = edge_types
@@ -45,14 +59,25 @@ class EdgeMinibatchIterator(object):
 
         # Function to build test and val sets with val_test_size positive links
         self.adj_train = {edge_type: [None]*n for edge_type, n in self.edge_types.items()}
+
         for i, j in self.edge_types:
+            all_possible_pairs = None
+            if (i,j) == (1,1) and negatives_sampling_strategy == 'known_pairs':
+                all_possible_pairs = []
+                for m in self.adj_mats[i,j]:
+                    m_coo = m.tocoo()
+                    for pair_index in range(m_coo.data.shape[0]):
+                        all_possible_pairs.append((m_coo.row[pair_index], m_coo.col[pair_index]))
+                all_possible_pairs = list(set(all_possible_pairs))
+
             for k in range(self.edge_types[i,j]):
                 print("Minibatch edge type:", "(%d, %d, %d)" % (i, j, k))
-                self.mask_test_edges((i, j), k)
+                self.mask_test_edges((i, j), k, all_possible_pairs)
 
                 print("Train edges=", "%04d" % len(self.train_edges[i,j][k]))
                 print("Val edges=", "%04d" % len(self.val_edges[i,j][k]))
                 print("Test edges=", "%04d" % len(self.test_edges[i,j][k]))
+
 
     def preprocess_graph(self, adj):
         adj = sp.coo_matrix(adj)
@@ -75,7 +100,18 @@ class EdgeMinibatchIterator(object):
         rows_close = np.all(a - b == 0, axis=1)
         return np.any(rows_close)
 
-    def mask_test_edges(self, edge_type, type_idx):
+    def mask_test_edges(self, edge_type, type_idx, all_possible_pairs):
+        """
+        :param edge_type: one of
+            (0, 0) - protein-protein interactions (and inverses)
+            (0, 1) - protein-drug relationships (inverse of targets)
+            (1, 0) - drug-protein relationships (targets)
+            (1, 1) - drug-drug relationships (interactions)
+        :param type_idx:
+        :param all_possible_pairs: all possible pairs for this edge type - e.g. all drug pairs that occur in
+                the whole dataset.
+        :return:
+        """
         edges_all, _, _ = preprocessing.sparse_to_tuple(self.adj_mats[edge_type][type_idx])
         num_test = max(50, int(np.floor(edges_all.shape[0] * self.val_test_size)))
         num_val = max(50, int(np.floor(edges_all.shape[0] * self.val_test_size)))
@@ -95,8 +131,18 @@ class EdgeMinibatchIterator(object):
         while len(test_edges_false) < len(test_edges):
             if len(test_edges_false) % 1000 == 0:
                 print("Constructing test edges=", "%04d/%04d" % (len(test_edges_false), len(test_edges)))
-            idx_i = np.random.randint(0, self.adj_mats[edge_type][type_idx].shape[0])
-            idx_j = np.random.randint(0, self.adj_mats[edge_type][type_idx].shape[1])
+
+            if all_possible_pairs is not None:
+                # chose a random non-zero item in the possible pairs matrix. The corresponding row and column index
+                # identify the pair. (the all_possible_pairs matrix's data array has only non-zero items)
+                random_index = np.random.randint(0, len(all_possible_pairs))
+                idx_i = all_possible_pairs[random_index][0]
+                idx_j = all_possible_pairs[random_index][1]
+            else:
+                idx_i = np.random.randint(0, self.adj_mats[edge_type][type_idx].shape[0])
+                idx_j = np.random.randint(0, self.adj_mats[edge_type][type_idx].shape[1])
+
+            # check if it is a true edge for this particular edge type.
             if self._ismember([idx_i, idx_j], edges_all):
                 continue
             if test_edges_false:
@@ -129,6 +175,9 @@ class EdgeMinibatchIterator(object):
 
     def save_edges_to_disk(self, edge_type, test_edges, test_edges_false, train_edges, type_idx, val_edges,
                            val_edges_false):
+        if not os.path.isdir("edges"):
+            os.mkdir("edges")
+
         if edge_type == (0, 0):
             name = "ppi"
         elif edge_type == (0, 1):
@@ -137,20 +186,21 @@ class EdgeMinibatchIterator(object):
             name = 'drug_protein'
         else:
             name = "ddi"
+
         self.train_edges[edge_type][type_idx] = train_edges
-        np.savetxt("train_edges_{}_{}.csv".format(name, type_idx), train_edges, delimiter=",",
+        np.savetxt("edges/train_edges_{}_{}.csv".format(name, type_idx), train_edges, delimiter=",",
                    fmt="%d")
         self.val_edges[edge_type][type_idx] = val_edges
-        np.savetxt("validation_edges_{}_{}.csv".format(name, type_idx), val_edges, delimiter=",",
+        np.savetxt("edges/validation_edges_{}_{}.csv".format(name, type_idx), val_edges, delimiter=",",
                    fmt="%d")
         self.val_edges_false[edge_type][type_idx] = np.array(val_edges_false)
-        np.savetxt("validation_edges_false_{}_{}.csv".format(name, type_idx), np.array(val_edges_false), delimiter=",",
+        np.savetxt("edges/validation_edges_false_{}_{}.csv".format(name, type_idx), np.array(val_edges_false), delimiter=",",
                    fmt="%d")
         self.test_edges[edge_type][type_idx] = test_edges
-        np.savetxt("test_edges_{}_{}.csv".format(name, type_idx), test_edges, delimiter=",",
+        np.savetxt("edges/test_edges_{}_{}.csv".format(name, type_idx), test_edges, delimiter=",",
                    fmt="%d")
         self.test_edges_false[edge_type][type_idx] = np.array(test_edges_false)
-        np.savetxt("test_edges_false_{}_{}.csv".format(name, type_idx), np.array(test_edges_false), delimiter=",",
+        np.savetxt("edges/test_edges_false_{}_{}.csv".format(name, type_idx), np.array(test_edges_false), delimiter=",",
                    fmt="%d")
 
     def end(self):
@@ -228,7 +278,6 @@ class EdgeMinibatchIterator(object):
         edge_type_ = self.idx2edge_type[edge_type]
         edge_list = self.test_edges[edge_type_[0],edge_type_[1]][edge_type_[2]]
         return self.batch_feed_dict(edge_list, edge_type, placeholders)
-
 
     def shuffle(self):
         """ Re-shuffle the training set.
