@@ -19,7 +19,7 @@ class EdgeMinibatchIterator(object):
     batch_size -- size of the minibatches
     """
     def __init__(self, adj_mats, feat, edge_types, batch_size=100, val_test_size=0.01,
-                 negatives_sampling_strategy='naive'):
+                 negatives_sampling_strategy='naive', saved_files_directory="./"):
         """
         :param negatives_sampling_strategy: 'naive' or 'known_pairs'. False edges for drug pairs will be
             sampled as follows:
@@ -37,6 +37,7 @@ class EdgeMinibatchIterator(object):
         self.batch_size = batch_size
         self.val_test_size = val_test_size
         self.num_edge_types = sum(self.edge_types.values())
+        self.saved_files_directory = saved_files_directory
 
         self.iter = 0
         self.freebatch_edge_types= list(range(self.num_edge_types))
@@ -63,12 +64,7 @@ class EdgeMinibatchIterator(object):
         for i, j in self.edge_types:
             all_possible_pairs = None
             if (i,j) == (1,1) and negatives_sampling_strategy == 'known_pairs':
-                all_possible_pairs = []
-                for m in self.adj_mats[i,j]:
-                    m_coo = m.tocoo()
-                    for pair_index in range(m_coo.data.shape[0]):
-                        all_possible_pairs.append((m_coo.row[pair_index], m_coo.col[pair_index]))
-                all_possible_pairs = list(set(all_possible_pairs))
+                all_possible_pairs = sp.vstack(self.adj_mats[i,j]) # all possible drug pairs
 
             for k in range(self.edge_types[i,j]):
                 print("Minibatch edge type:", "(%d, %d, %d)" % (i, j, k))
@@ -77,7 +73,6 @@ class EdgeMinibatchIterator(object):
                 print("Train edges=", "%04d" % len(self.train_edges[i,j][k]))
                 print("Val edges=", "%04d" % len(self.val_edges[i,j][k]))
                 print("Test edges=", "%04d" % len(self.test_edges[i,j][k]))
-
 
     def preprocess_graph(self, adj):
         adj = sp.coo_matrix(adj)
@@ -135,9 +130,9 @@ class EdgeMinibatchIterator(object):
             if all_possible_pairs is not None:
                 # chose a random non-zero item in the possible pairs matrix. The corresponding row and column index
                 # identify the pair. (the all_possible_pairs matrix's data array has only non-zero items)
-                random_index = np.random.randint(0, len(all_possible_pairs))
-                idx_i = all_possible_pairs[random_index][0]
-                idx_j = all_possible_pairs[random_index][1]
+                random_index = np.random.randint(0, all_possible_pairs.data.shape[0])
+                idx_i = all_possible_pairs.row[random_index]
+                idx_j = all_possible_pairs.col[random_index]
             else:
                 idx_i = np.random.randint(0, self.adj_mats[edge_type][type_idx].shape[0])
                 idx_j = np.random.randint(0, self.adj_mats[edge_type][type_idx].shape[1])
@@ -176,7 +171,7 @@ class EdgeMinibatchIterator(object):
     def save_edges_to_disk(self, edge_type, test_edges, test_edges_false, train_edges, type_idx, val_edges,
                            val_edges_false):
         if not os.path.isdir("edges"):
-            os.mkdir("edges")
+            os.mkdir("%sedges" % self.saved_files_directory)
 
         if edge_type == (0, 0):
             name = "ppi"
@@ -188,19 +183,24 @@ class EdgeMinibatchIterator(object):
             name = "ddi"
 
         self.train_edges[edge_type][type_idx] = train_edges
-        np.savetxt("edges/train_edges_{}_{}.csv".format(name, type_idx), train_edges, delimiter=",",
+        np.savetxt("{}edges/train_edges_{}_{}.csv".format(self.saved_files_directory, name, type_idx), train_edges,
+                   delimiter=",",
                    fmt="%d")
         self.val_edges[edge_type][type_idx] = val_edges
-        np.savetxt("edges/validation_edges_{}_{}.csv".format(name, type_idx), val_edges, delimiter=",",
+        np.savetxt("{}edges/validation_edges_{}_{}.csv".format(self.saved_files_directory, name, type_idx), val_edges,
+                   delimiter=",",
                    fmt="%d")
         self.val_edges_false[edge_type][type_idx] = np.array(val_edges_false)
-        np.savetxt("edges/validation_edges_false_{}_{}.csv".format(name, type_idx), np.array(val_edges_false), delimiter=",",
+        np.savetxt("{}edges/validation_edges_false_{}_{}.csv".format(self.saved_files_directory, name, type_idx),
+                   np.array(val_edges_false), delimiter=",",
                    fmt="%d")
         self.test_edges[edge_type][type_idx] = test_edges
-        np.savetxt("edges/test_edges_{}_{}.csv".format(name, type_idx), test_edges, delimiter=",",
+        np.savetxt("{}edges/test_edges_{}_{}.csv".format(self.saved_files_directory, name, type_idx), test_edges,
+                   delimiter=",",
                    fmt="%d")
         self.test_edges_false[edge_type][type_idx] = np.array(test_edges_false)
-        np.savetxt("edges/test_edges_false_{}_{}.csv".format(name, type_idx), np.array(test_edges_false), delimiter=",",
+        np.savetxt("{}edges/test_edges_false_{}_{}.csv".format(self.saved_files_directory, name, type_idx),
+                   np.array(test_edges_false), delimiter=",",
                    fmt="%d")
 
     def end(self):
