@@ -66,7 +66,12 @@ class EdgeMinibatchIterator(object):
         for i, j in self.edge_types:
             all_possible_pairs = None
             if (i,j) == (1,1) and negatives_sampling_strategy == 'known_pairs':
-                all_possible_pairs = sp.vstack(self.adj_mats[i,j]) # all possible drug pairs
+                all_possible_pairs = []
+                for m in self.adj_mats[i,j]:
+                    m_coo = m.tocoo()
+                    for pair_index in range(m_coo.data.shape[0]):
+                        all_possible_pairs.append((m_coo.row[pair_index], m_coo.col[pair_index]))
+                all_possible_pairs = list(set(all_possible_pairs))
 
             for k in range(self.edge_types[i,j]):
                 print("Minibatch edge type:", "(%d, %d, %d)" % (i, j, k))
