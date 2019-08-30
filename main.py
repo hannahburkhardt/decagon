@@ -126,7 +126,8 @@ def get_predictions(edge_type, edges_neg, edges_pos, feed_dict):
         score = sigmoid(rec[u, v])
         scores.append(score)
         # Make sure this positive edge really did occur in the original data
-        assert adj_mats_orig[edge_category][edge_type[2]][u, v] == 1, 'Problem 1'
+        assert adj_mats_orig[edge_category][edge_type[2]][u, v] == 1, f"Error: This positive edge did not actually " \
+            f"occur in the original data and thus should not be a positive edge: ({edge_category}, {edge_type}) {u},{v}"
 
         subjects.append(u)
         objects.append(v)
@@ -141,7 +142,8 @@ def get_predictions(edge_type, edges_neg, edges_pos, feed_dict):
         score = sigmoid(rec[u, v])
         scores_neg.append(score)
         # Make sure this negative edge really did not occur in the original data
-        assert adj_mats_orig[edge_category][edge_type[2]][u, v] == 0, 'Problem 0'
+        assert adj_mats_orig[edge_category][edge_type[2]][u, v] == 0, f"Error: This negative edge did actually occur " \
+            f"in the original data and thus should not be a negative edge: ({edge_category}, {edge_type}) {u},{v}"
 
         subjects.append(u)
         objects.append(v)
@@ -238,7 +240,7 @@ def main(args):
     verbose = args.verbose
     script_start_time = datetime.now()
 
-    # create pre-processed file that only has side effect with >=500 occurrences
+    # create pre-processed file that only has side effects with >=500 occurrences
     if not os.path.isfile('%sbio-decagon-combo-over500only.csv' % decagon_data_file_directory):
         all_combos_arr = np.genfromtxt('%sbio-decagon-combo.csv' % decagon_data_file_directory, delimiter=',',
                                        encoding="utf8", dtype='str', skip_header=1)
@@ -252,7 +254,7 @@ def main(args):
                    fmt='%s',
                    encoding='utf8', header='STITCH 1,STITCH 2,Polypharmacy Side Effect,Side Effect Name', comments='')
 
-    # use pre=processed file that only contains the most common side effects (those with >= 500 drug pairs)
+    # use pre-processed file that only contains the most common side effects (those with >= 500 drug pairs)
     drug_drug_net, combo2stitch, combo2se, se2name = load_combo_se(
         fname=('%sbio-decagon-combo-over500only.csv' % decagon_data_file_directory))
     # net is a networkx graph with genes(proteins) as nodes and protein-protein-interactions as edges
@@ -293,7 +295,7 @@ def main(args):
     gene_drug_adj = drug_gene_adj.transpose(copy=True)
 
     drug_drug_adj_list = []
-    if not os.path.isfile("%sadjacency_matrices/sparse_matrix0000.npz" % args.saved_files_directory):
+    if not os.path.isfile(args.saved_files_directory + "adjacency_matrices/sparse_matrix0000.npz"):
         # pre-initialize all the matrices
         print("Initializing drug-drug adjacency matrix list")
         start_time = datetime.now()
@@ -341,17 +343,17 @@ def main(args):
         print("Starting at %s" % str(start_time))
 
         # save matrices to file
-        if not os.path.isdir("%sadjacency_matrices" % args.saved_files_directory):
-            os.mkdir("%sadjacency_matrices" % args.saved_files_directory)
+        if not os.path.isdir(args.saved_files_directory + "adjacency_matrices"):
+            os.mkdir(args.saved_files_directory + "adjacency_matrices")
         for i in range(len(drug_drug_adj_list)):
-            sp.save_npz('%sadjacency_matrices/sparse_matrix%04d.npz' % (args.saved_files_directory, i,),
+            sp.save_npz(args.saved_files_directory + 'adjacency_matrices/sparse_matrix%04d.npz' % (i,),
                         drug_drug_adj_list[i].tocoo())
         print("Done saving matrices to file at %s after %s" % (datetime.now(), datetime.now() - start_time))
     else:
         print("Loading adjacency matrices from file.")
         for i in range(len(ordered_list_of_side_effects)):
             drug_drug_adj_list.append(
-                sp.load_npz('%sadjacency_matrices/sparse_matrix%04d.npz' % (args.saved_files_directory, i, )))
+                sp.load_npz(args.saved_files_directory + 'adjacency_matrices/sparse_matrix%04d.npz' % i))
 
     for i in range(len(drug_drug_adj_list)):
         drug_drug_adj_list[i] = drug_drug_adj_list[i].tocsr()
@@ -628,6 +630,12 @@ def main(args):
     print("Script running time: %s" % (datetime.now() - script_start_time))
 
 
+def fix_path(path):
+    if len(path) > 0 and path[-1] != "/":
+        path += "/"
+    return path
+
+
 if __name__ == '__main__':
     # allow specification of command line flags
     parser = argparse.ArgumentParser(add_help=False)
@@ -691,5 +699,8 @@ if __name__ == '__main__':
     group.add_argument("--score_output_file",
                        help="name of file to write test set predictions to", default="scores.tsv", type=str)
     args = parser.parse_args(unparsed)
+
+    args.saved_files_directory = fix_path(args.saved_files_directory)
+    args.decagon_data_file_directory = fix_path(args.decagon_data_file_directory)
 
     main(args)
