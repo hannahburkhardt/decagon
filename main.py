@@ -258,19 +258,17 @@ def main(args):
     # net is a networkx graph with genes(proteins) as nodes and protein-protein-interactions as edges
     # node2idx maps node id to node index
     gene_net, node2idx = load_ppi(fname=('%sbio-decagon-ppi.csv' % decagon_data_file_directory))
-    # stitch2se maps (individual) stitch ids to a list of side effect ids
-    # se2name_mono maps side effect ids that occur in the mono file to side effect names (shorter than se2name)
-    stitch2se, se2name_mono = load_mono_se(
-        fname=('%sbio-decagon-mono.csv' % decagon_data_file_directory))
     # stitch2proteins maps stitch ids (drug) to protein (gene) ids
     drug_gene_net, stitch2proteins = load_targets(
         fname=('%sbio-decagon-targets-all.csv' % decagon_data_file_directory))
-    # se2class maps side effect id to class name
 
     # this was 0.05 in the original code, but the paper says that 10% each are used for testing and validation
     val_test_size = 0.1
     n_genes = gene_net.number_of_nodes()
-    gene_adj = nx.adjacency_matrix(gene_net)
+    if n_genes == 0:
+        gene_adj = sp.coo_matrix([])
+    else:
+        gene_adj = nx.adjacency_matrix(gene_net)
     gene_degrees = np.array(gene_adj.sum(axis=0)).squeeze()
 
     ordered_list_of_drugs = list(drug_drug_net.nodes.keys())
@@ -295,7 +293,7 @@ def main(args):
     gene_drug_adj = drug_gene_adj.transpose(copy=True)
 
     drug_drug_adj_list = []
-    if not os.path.isfile("adjacency_matrices/sparse_matrix0000.npz"):
+    if not os.path.isfile("%sadjacency_matrices/sparse_matrix0000.npz" % args.saved_files_directory):
         # pre-initialize all the matrices
         print("Initializing drug-drug adjacency matrix list")
         start_time = datetime.now()
@@ -343,15 +341,17 @@ def main(args):
         print("Starting at %s" % str(start_time))
 
         # save matrices to file
-        if not os.path.isdir("adjacency_matrices"):
-            os.mkdir("adjacency_matrices")
+        if not os.path.isdir("%sadjacency_matrices" % args.saved_files_directory):
+            os.mkdir("%sadjacency_matrices" % args.saved_files_directory)
         for i in range(len(drug_drug_adj_list)):
-            sp.save_npz('adjacency_matrices/sparse_matrix%04d.npz' % (i,), drug_drug_adj_list[i].tocoo())
+            sp.save_npz('%sadjacency_matrices/sparse_matrix%04d.npz' % (args.saved_files_directory, i,),
+                        drug_drug_adj_list[i].tocoo())
         print("Done saving matrices to file at %s after %s" % (datetime.now(), datetime.now() - start_time))
     else:
         print("Loading adjacency matrices from file.")
         for i in range(len(ordered_list_of_side_effects)):
-            drug_drug_adj_list.append(sp.load_npz('adjacency_matrices/sparse_matrix%04d.npz' % i))
+            drug_drug_adj_list.append(
+                sp.load_npz('%sadjacency_matrices/sparse_matrix%04d.npz' % (args.saved_files_directory, i, )))
 
     for i in range(len(drug_drug_adj_list)):
         drug_drug_adj_list[i] = drug_drug_adj_list[i].tocsr()
@@ -447,7 +447,8 @@ def main(args):
             edge_types=edge_types,
             batch_size=FLAGS.batch_size,
             val_test_size=val_test_size,
-            negatives_sampling_strategy=args.negatives_sampling_strategy)
+            negatives_sampling_strategy=args.negatives_sampling_strategy,
+            saved_files_directory=args.saved_files_directory)
         print("Pickling minibatch iterator")
         with open(iterator_pickle_file_name, 'wb') as pickle_file:
             pickle.dump(minibatch_iterator, pickle_file)
@@ -583,6 +584,10 @@ def main(args):
         _, _, all_scores, all_labels, subjects, predicates, objects = get_predictions(
             edges_pos=minibatch_iterator.test_edges, edges_neg=minibatch_iterator.test_edges_false,
             edge_type=edge_tuple, feed_dict=feed_dict)
+
+        header = "subject\tpredicate\tobject\tpredicted\tactual"
+        side_effect_result_lines.append(header)
+        print(header)
 
         for i in range(len(all_scores)):
             subject = subjects[i]
