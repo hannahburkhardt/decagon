@@ -260,15 +260,31 @@ def main(args):
     # net is a networkx graph with genes(proteins) as nodes and protein-protein-interactions as edges
     # node2idx maps node id to node index
     gene_net, node2idx = load_ppi(fname=('%sbio-decagon-ppi.csv' % decagon_data_file_directory))
+<<<<<<< Updated upstream
     # stitch2proteins maps stitch ids (drug) to protein (gene) ids
     drug_gene_net, stitch2proteins = load_targets(
         fname=('%sbio-decagon-targets-all.csv' % decagon_data_file_directory))
+=======
+    # stitch2se maps (individual) stitch ids to a list of side effect ids
+    # se2name_mono maps side effect ids that occur in the mono file to side effect names (shorter than se2name)
+    stitch2se, se2name_mono = load_mono_se(
+        fname=('%sbio-decagon-mono.csv' % decagon_data_file_directory))
+    # stitch2proteins maps stitch ids (drug) to the ids of the proteins (genes) they interact with
+    drug_gene_net, stitch2proteins = load_targets(
+        fname=('%sbio-decagon-targets-all.csv' % decagon_data_file_directory))
+    # se2class maps side effect id to side effect class name (not needed)
+>>>>>>> Stashed changes
 
     # this was 0.05 in the original code, but the paper says that 10% each are used for testing and validation
     val_test_size = 0.1
     n_genes = gene_net.number_of_nodes()
+<<<<<<< Updated upstream
     if n_genes == 0:
         gene_adj = sp.coo_matrix([])
+=======
+    if gene_net.number_of_nodes() == 0:
+        gene_adj = sp.csr_matrix([])
+>>>>>>> Stashed changes
     else:
         gene_adj = nx.adjacency_matrix(gene_net)
     gene_degrees = np.array(gene_adj.sum(axis=0)).squeeze()
