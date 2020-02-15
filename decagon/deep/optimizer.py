@@ -36,15 +36,16 @@ class DecagonOptimizer(object):
         neg_samples_list = []
         for i, j in self.edge_types:
             for k in range(self.edge_types[i,j]):
-                neg_samples, _, _ = tf.nn.fixed_unigram_candidate_sampler(
-                    true_classes=labels,
-                    num_true=1,
-                    num_sampled=self.batch_size,
-                    unique=False,
-                    range_max=len(self.degrees[i][k]),
-                    distortion=0.75,
-                    unigrams=self.degrees[i][k].tolist())
-                neg_samples_list.append(neg_samples)
+                if len(self.degrees[i][k]) > 0:
+                    neg_samples, _, _ = tf.nn.fixed_unigram_candidate_sampler(
+                        true_classes=labels,
+                        num_true=1,
+                        num_sampled=self.batch_size,
+                        unique=False,
+                        range_max=len(self.degrees[i][k]),
+                        distortion=0.75,
+                        unigrams=self.degrees[i][k].tolist())
+                    neg_samples_list.append(neg_samples)
         self.neg_samples = tf.gather(neg_samples_list, self.batch_edge_type_idx)
 
         self.preds = self.batch_predict(self.row_inputs, self.col_inputs)
